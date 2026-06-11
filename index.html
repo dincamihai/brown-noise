@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0805" />
+  <title>Brown Noise</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main>
+    <h1 class="title">Brown Noise</h1>
+    <button id="play" class="play" aria-label="Play">PLAY</button>
+    <div class="controls">
+      <label class="control">
+        <span>Volume</span>
+        <input id="volume" type="range" min="0" max="1" step="0.01" />
+      </label>
+      <label class="control">
+        <span>Tone</span>
+        <input id="tone" type="range" min="0" max="1" step="0.01" />
+      </label>
+    </div>
+  </main>
+  <audio id="audio" loop></audio>
+  <script type="module" src="js/ui.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js');
+      });
+    }
+  </script>
+</body>
+</html>
