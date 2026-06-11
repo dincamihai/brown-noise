@@ -1,0 +1,127 @@
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('fonts/press-start-2p.woff2') format('woff2');
+  font-display: swap;
+}
+
+:root {
+  --bg: #0a0805;
+  --amber: #c8862e;
+  --amber-dim: #7a5520;
+  --bezel: #241809;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--amber);
+  font-family: 'Press Start 2P', monospace;
+}
+
+/* Subtle CRT scanlines — darkening only, no glow, bedroom-safe. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0, transparent 3px,
+    rgba(0, 0, 0, 0.25) 3px, rgba(0, 0, 0, 0.25) 4px
+  );
+}
+
+main {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3rem;
+  padding: 2rem;
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
+}
+
+.title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: normal;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--amber-dim);
+}
+
+.play {
+  min-width: 11rem;
+  padding: 2rem 1.5rem;
+  border: 4px solid var(--amber-dim);
+  border-radius: 0;
+  background: var(--bezel);
+  color: var(--amber);
+  font: inherit;
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--bezel);
+}
+
+.play:active { transform: translate(2px, 2px); }
+
+.controls {
+  width: 100%;
+  max-width: 22rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--amber-dim);
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 2.5rem;
+  background: transparent;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  background: var(--bezel);
+  border: 2px solid var(--amber-dim);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  margin-top: -8px;
+  background: var(--amber);
+  border: 0;
+  border-radius: 0;
+}
+
+input[type="range"]::-moz-range-track {
+  height: 8px;
+  background: var(--bezel);
+  border: 2px solid var(--amber-dim);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  background: var(--amber);
+  border: 0;
+  border-radius: 0;
+}

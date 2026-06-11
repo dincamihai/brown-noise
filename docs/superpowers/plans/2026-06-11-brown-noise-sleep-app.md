@@ -416,12 +416,30 @@ git commit -m "feat: add WAV encoder"
 - Modify: `js/noise.js`
 - Modify: `test/noise.test.js`
 
+This task also resolves two code-review findings from Tasks 2 and 4 by adding a final `normalizeLoudness` stage: (a) equal-power crossfade of two peak-normalized regions can exceed full scale (measured up to ~1.16), which `encodeWav` would hard-clip into an audible thump at the loop seam; (b) per-render peak normalization makes loudness vary between regenerations and across tone settings. RMS-targeted gain with a peak ceiling fixes both.
+
 - [ ] **Step 1: Write the failing test**
 
 Add to `test/noise.test.js`:
 
 ```js
-import { renderNoiseWav, DEFAULTS } from '../js/noise.js';
+import { renderNoiseWav, normalizeLoudness, DEFAULTS } from '../js/noise.js';
+
+test('normalizeLoudness hits target RMS without exceeding peak ceiling', () => {
+  const s = new Float32Array(1000);
+  for (let i = 0; i < s.length; i++) s[i] = Math.sin(i * 0.1) * 2; // loud input, peak 2
+  const out = normalizeLoudness(s, 0.2, 0.99);
+  let sumSq = 0, peak = 0;
+  for (const v of out) { sumSq += v * v; peak = Math.max(peak, Math.abs(v)); }
+  const rms = Math.sqrt(sumSq / out.length);
+  assert.ok(peak <= 0.99 + 1e-6, `peak ${peak} exceeds ceiling`);
+  assert.ok(Math.abs(rms - 0.2) < 0.01, `rms ${rms} should be ~0.2`);
+});
+
+test('normalizeLoudness returns silence for silent input', () => {
+  const out = normalizeLoudness(new Float32Array(100), 0.2, 0.99);
+  for (const v of out) assert.equal(v, 0);
+});
 
 test('renderNoiseWav returns a WAV of the expected looped length', () => {
   const sampleRate = 8000;
@@ -429,6 +447,15 @@ test('renderNoiseWav returns a WAV of the expected looped length', () => {
   const loopSamples = Math.round(2 * sampleRate) - Math.round(0.5 * sampleRate);
   assert.equal(wav.length, 44 + loopSamples * 2);
   assert.equal(String.fromCharCode(...wav.slice(0, 4)), 'RIFF');
+});
+
+test('renderNoiseWav output never clips (no full-scale samples)', () => {
+  const wav = renderNoiseWav({ durationSec: 2, fadeSec: 0.5, cutoffHz: 500, sampleRate: 8000 });
+  const view = new DataView(wav.buffer);
+  for (let off = 44; off < wav.length; off += 2) {
+    const v = view.getInt16(off, true);
+    assert.ok(Math.abs(v) <= 32500, `near-full-scale sample ${v} at byte ${off}`);
+  }
 });
 
 test('DEFAULTS expose the sleep-tuned values', () => {
@@ -441,7 +468,7 @@ test('DEFAULTS expose the sleep-tuned values', () => {
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `node --test test/noise.test.js`
-Expected: FAIL — `renderNoiseWav`/`DEFAULTS` not exported.
+Expected: FAIL — `renderNoiseWav`/`normalizeLoudness`/`DEFAULTS` not exported.
 
 - [ ] **Step 3: Write minimal implementation**
 
@@ -453,9 +480,30 @@ export const DEFAULTS = {
   durationSec: 30,
   fadeSec: 1,
   cutoffHz: 500,
+  targetRms: 0.17, // 0.99/0.17 ≈ 5.8x crest headroom; measured worst-case crest ≈ 5.3
+  peakCeiling: 0.99,
 };
 
-// Full pipeline: generate -> low-pass -> seamless loop -> WAV bytes (Uint8Array).
+// Scale to a consistent loudness (target RMS), capped so no sample exceeds
+// peakCeiling. Consistent loudness across regenerations/tone settings, and
+// guarantees encodeWav never hard-clips (e.g. in the crossfade region).
+export function normalizeLoudness(samples, targetRms = DEFAULTS.targetRms, peakCeiling = DEFAULTS.peakCeiling) {
+  let sumSq = 0;
+  let peak = 0;
+  for (const v of samples) {
+    sumSq += v * v;
+    const a = Math.abs(v);
+    if (a > peak) peak = a;
+  }
+  const rms = Math.sqrt(sumSq / samples.length);
+  const out = new Float32Array(samples.length);
+  if (rms === 0 || peak === 0) return out;
+  const gain = Math.min(targetRms / rms, peakCeiling / peak);
+  for (let i = 0; i < samples.length; i++) out[i] = samples[i] * gain;
+  return out;
+}
+
+// Full pipeline: generate -> low-pass -> seamless loop -> normalize -> WAV bytes.
 export function renderNoiseWav({
   durationSec = DEFAULTS.durationSec,
   fadeSec = DEFAULTS.fadeSec,
@@ -467,14 +515,15 @@ export function renderNoiseWav({
   const raw = generateBrownNoise(totalSamples);
   const filtered = lowPassFilter(raw, cutoffHz, sampleRate);
   const looped = equalPowerCrossfade(filtered, fadeSamples);
-  return encodeWav(looped, sampleRate);
+  const normalized = normalizeLoudness(looped);
+  return encodeWav(normalized, sampleRate);
 }
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `node --test test/noise.test.js`
-Expected: PASS (8 tests).
+Expected: PASS (12 tests).
 
 - [ ] **Step 5: Commit**
 
@@ -715,6 +764,21 @@ git commit -m "feat: add playback controller"
 - Create: `js/ui.js`
 - Create: `index.html`
 - Create: `styles.css`
+- Create: `fonts/press-start-2p.woff2` (downloaded)
+
+Visual direction (user-requested): retro pixel / warm CRT amber nostalgia, kept dim for a dark bedroom. Pixel font is self-hosted for offline use. No border-radius anywhere; chunky square borders; subtle darkening scanlines.
+
+Accepted trade-off (from Task 6 review): `renderNoiseWav` blocks the main thread ~150–300 ms on a phone per call. It runs once at load and once per tone-slider settle (debounced) — a rare, set-once action — so we accept the brief hitch rather than adding a Web Worker. Volume changes never regenerate.
+
+- [ ] **Step 0: Download the pixel font (OFL-licensed Press Start 2P)**
+
+```bash
+mkdir -p fonts
+URL=$(curl -s -A "Mozilla/5.0" "https://fonts.googleapis.com/css2?family=Press+Start+2P" | grep -o 'https://[^)]*\.woff2' | head -1)
+curl -sL -o fonts/press-start-2p.woff2 "$URL"
+file fonts/press-start-2p.woff2
+```
+Expected: `Web Open Font Format (Version 2)`. If the network is unavailable, skip — the CSS falls back to monospace; report it as a concern.
 
 - [ ] **Step 1: Create `js/ui.js`**
 
@@ -739,7 +803,7 @@ function regenerate() {
 
 function reflectUi() {
   const playing = player.isPlaying;
-  playBtn.textContent = playing ? '⏸' : '▶'; // ⏸ / ▶
+  playBtn.textContent = playing ? 'PAUSE' : 'PLAY'; // text labels render in the pixel font
   playBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play');
 }
 
@@ -784,7 +848,7 @@ init();
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="theme-color" content="#0a0805" />
   <title>Brown Noise</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
@@ -792,7 +856,8 @@ init();
 </head>
 <body>
   <main>
-    <button id="play" class="play" aria-label="Play">&#9654;</button>
+    <h1 class="title">Brown Noise</h1>
+    <button id="play" class="play" aria-label="Play">PLAY</button>
     <div class="controls">
       <label class="control">
         <span>Volume</span>
@@ -817,13 +882,20 @@ init();
 </html>
 ```
 
-- [ ] **Step 3: Create `styles.css`**
+- [ ] **Step 3: Create `styles.css`** (retro warm-CRT-amber pixel theme, dim for night use)
 
 ```css
+@font-face {
+  font-family: 'Press Start 2P';
+  src: url('fonts/press-start-2p.woff2') format('woff2');
+  font-display: swap;
+}
+
 :root {
-  --bg: #0a0a0a;
-  --fg: #c9bdb0;
-  --accent: #5a4637;
+  --bg: #0a0805;
+  --amber: #c8862e;
+  --amber-dim: #7a5520;
+  --bezel: #241809;
 }
 
 * { box-sizing: border-box; }
@@ -832,8 +904,21 @@ html, body {
   margin: 0;
   height: 100%;
   background: var(--bg);
-  color: var(--fg);
-  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--amber);
+  font-family: 'Press Start 2P', monospace;
+}
+
+/* Subtle CRT scanlines — darkening only, no glow, bedroom-safe. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0, transparent 3px,
+    rgba(0, 0, 0, 0.25) 3px, rgba(0, 0, 0, 0.25) 4px
+  );
 }
 
 main {
@@ -847,44 +932,85 @@ main {
   padding-bottom: max(2rem, env(safe-area-inset-bottom));
 }
 
-.play {
-  width: 9rem;
-  height: 9rem;
-  border-radius: 50%;
-  border: none;
-  background: var(--accent);
-  color: var(--fg);
-  font-size: 3rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: transform 0.1s ease, opacity 0.2s ease;
+.title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: normal;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--amber-dim);
 }
 
-.play:active { transform: scale(0.96); }
+.play {
+  min-width: 11rem;
+  padding: 2rem 1.5rem;
+  border: 4px solid var(--amber-dim);
+  border-radius: 0;
+  background: var(--bezel);
+  color: var(--amber);
+  font: inherit;
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  box-shadow: 0 0 0 4px var(--bg), 0 0 0 8px var(--bezel);
+}
+
+.play:active { transform: translate(2px, 2px); }
 
 .controls {
   width: 100%;
   max-width: 22rem;
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
+  gap: 2rem;
 }
 
 .control {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
+  gap: 0.75rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  opacity: 0.7;
+  color: var(--amber-dim);
 }
 
 input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
   width: 100%;
   height: 2.5rem;
-  accent-color: var(--accent);
   background: transparent;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  background: var(--bezel);
+  border: 2px solid var(--amber-dim);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  margin-top: -10px;
+  background: var(--amber);
+  border: 0;
+  border-radius: 0;
+}
+
+input[type="range"]::-moz-range-track {
+  height: 8px;
+  background: var(--bezel);
+  border: 2px solid var(--amber-dim);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  background: var(--amber);
+  border: 0;
+  border-radius: 0;
 }
 ```
 
@@ -896,8 +1022,8 @@ Expected: no output, exit 0.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add js/ui.js index.html styles.css
-git commit -m "feat: add UI wiring, HTML shell, and styles"
+git add js/ui.js index.html styles.css fonts/press-start-2p.woff2
+git commit -m "feat: add UI wiring, HTML shell, and retro CRT styles"
 ```
 
 ---
@@ -953,8 +1079,8 @@ def make_png(path, size, bg, fg):
 
 if __name__ == "__main__":
     os.makedirs("icons", exist_ok=True)
-    bg = (10, 10, 10)
-    fg = (90, 70, 55)
+    bg = (10, 8, 5)       # near-black warm
+    fg = (200, 134, 46)   # CRT amber
     make_png("icons/icon-192.png", 192, bg, fg)
     make_png("icons/icon-512.png", 512, bg, fg)
     print("icons written")
@@ -979,8 +1105,8 @@ Expected: both reported as `PNG image data`, 192x192 and 512x512 respectively.
   "description": "Brown noise for sleep.",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
+  "background_color": "#0a0805",
+  "theme_color": "#0a0805",
   "orientation": "portrait",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
@@ -1004,6 +1130,7 @@ const ASSETS = [
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
+  './fonts/press-start-2p.woff2',
 ];
 
 self.addEventListener('install', (event) => {

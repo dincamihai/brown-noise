@@ -101,9 +101,20 @@ trivial and dependency-free. Four focused modules:
 
 ## Visual design
 
-Dark, dim, minimal — built for a dark bedroom. Near-black background; one large
-central play/pause button; two understated sliders (volume + tone) below it; no
-chrome or clutter. Large touch targets. That is the entire screen.
+Retro pixel / CRT nostalgia, tuned for a dark bedroom (user request: "retro style
+pixelated but cool nostalgia ui", palette choice: warm CRT amber).
+
+- **Palette:** dim warm amber on near-black, like an old amber terminal. Warm
+  light is the most sleep-friendly choice. Everything stays low-brightness — no
+  bright glow at 1am.
+- **Typography:** "Press Start 2P" pixel font (OFL-licensed), self-hosted in
+  `fonts/` and cached by the service worker — no runtime Google Fonts request,
+  works offline. Monospace fallback.
+- **Layout:** one large central pixel-art play/pause button (chunky square
+  borders, no border-radius anywhere), two chunky sliders (volume + tone) with
+  blocky square thumbs, uppercase pixel-font labels.
+- **CRT touches:** subtle scanline overlay (very low opacity, darkens rather
+  than glows). Large touch targets. That is the entire screen.
 
 ## Testing & error handling
 
