@@ -85,4 +85,8 @@ test('encodeWav writes a valid 16-bit PCM mono header', () => {
   assert.equal(view.getUint16(22, true), 1);     // mono
   assert.equal(view.getUint32(24, true), 44100); // sample rate
   assert.equal(view.getUint16(34, true), 16);    // bits per sample
+  assert.equal(view.getUint32(40, true), 10);     // data chunk size = 5 samples * 2
+  assert.equal(view.getInt16(44, true), 0);       // 0 -> 0
+  assert.equal(view.getInt16(50, true), 32767);   // 1 -> int16 max
+  assert.equal(view.getInt16(52, true), -32768);  // -1 -> int16 min
 });
