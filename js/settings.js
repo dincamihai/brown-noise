@@ -33,9 +33,9 @@ export function cutoffToSlider(hz) {
 export function normalizeSettings(raw) {
   const r = raw && typeof raw === 'object' ? raw : {};
   return {
-    volume: clamp(typeof r.volume === 'number' ? r.volume : SETTINGS_DEFAULTS.volume, 0, 1),
+    volume: clamp(Number.isFinite(r.volume) ? r.volume : SETTINGS_DEFAULTS.volume, 0, 1),
     cutoffHz: clamp(
-      typeof r.cutoffHz === 'number' ? r.cutoffHz : SETTINGS_DEFAULTS.cutoffHz,
+      Number.isFinite(r.cutoffHz) ? r.cutoffHz : SETTINGS_DEFAULTS.cutoffHz,
       CUTOFF_MIN, CUTOFF_MAX,
     ),
   };
