@@ -1069,16 +1069,63 @@ Set a distinct volume + tone, reload the page. Expected: sliders restore to the 
 
 In Chrome, confirm the install prompt/icon appears (DevTools → Application → Manifest shows no errors and the icons render). Install it. Then in DevTools → Network, set "Offline" and reload the installed app. Expected: it still loads and plays (app shell served from cache; audio is generated on-device).
 
-- [ ] **Step 7: Background / lock-screen playback (the critical check)**
-
-On a phone: start playback, then lock the screen (or switch apps). Expected: audio keeps playing; lock-screen media controls show "Brown Noise" with a working pause button. This is the core requirement — if audio stops on lock, the playback architecture needs revisiting before shipping.
-
-- [ ] **Step 8: Final commit (if any verification fixes were made)**
+- [ ] **Step 7: Final commit (if any verification fixes were made)**
 
 ```bash
 git add -A
 git commit -m "chore: manual verification pass"
 ```
+
+Note: the phone-only checks (PWA install on device, lock-screen playback) happen in Task 12 after deployment — the phone needs an HTTPS URL.
+
+---
+
+## Task 12: Deploy to GitHub Pages + on-device verification
+
+**Files:** none new (deployment + verification)
+
+PWA install and service workers require HTTPS; the target device is the user's Android phone, so the app must be hosted. GitHub Pages serves the repo as static files over HTTPS — no build step needed. All asset paths in the app are already relative, so subpath hosting (`<user>.github.io/brown-noise/`) works.
+
+- [ ] **Step 1: Create the GitHub repo and push**
+
+Run:
+```bash
+gh repo create brown-noise --public --source . --push
+```
+Expected: repo created and `main` pushed. (If `gh` is not authenticated, run `gh auth login` first — this needs the user.)
+
+- [ ] **Step 2: Enable GitHub Pages from the main branch root**
+
+Run:
+```bash
+gh api repos/{owner}/brown-noise/pages -X POST \
+  -f "source[branch]=main" -f "source[path]=/"
+```
+Expected: HTTP 201. Then get the URL:
+```bash
+gh api repos/{owner}/brown-noise/pages --jq .html_url
+```
+Expected: `https://<user>.github.io/brown-noise/`. The first deploy can take a minute or two; poll the URL until it returns the app.
+
+- [ ] **Step 3: Verify over HTTPS in a desktop browser**
+
+Open the Pages URL. Expected: app loads, plays, manifest shows no errors in DevTools → Application (icons render, no console errors about the service worker).
+
+- [ ] **Step 4: Install on the Android phone**
+
+Open the Pages URL in Chrome on the phone. Expected: "Add to Home screen" / install prompt available. Install; the app launches standalone (no browser chrome) with the dark theme.
+
+- [ ] **Step 5: Lock-screen playback (the critical check)**
+
+In the installed app: start playback, then lock the screen. Expected: audio keeps playing; the lock screen shows media controls titled "Brown Noise" with a working pause button. This is the core requirement — if audio stops on lock, the playback architecture needs revisiting before shipping.
+
+- [ ] **Step 6: Volume slider on device**
+
+While playing on the phone, drag the Volume slider. Expected: loudness changes (Android Chrome supports programmatic `audio.volume`; this is why the target platform mattered).
+
+- [ ] **Step 7: Offline launch on device**
+
+Enable airplane mode, relaunch the installed app. Expected: it loads and plays — the shell comes from the service worker cache and the audio is generated on-device.
 
 ---
 
@@ -1093,7 +1140,8 @@ git commit -m "chore: manual verification pass"
 - Debounced regenerate on tone change, instant volume → Task 9 `ui.js`. ✓
 - localStorage persistence + fallbacks → Task 7; verified Task 11 Step 5. ✓
 - Dark minimal UI → Task 9 `styles.css`. ✓
-- Installable, offline PWA → Task 10; verified Task 11 Step 6. ✓
+- Installable, offline PWA → Task 10; verified Task 11 Step 6 (desktop) and Task 12 Steps 4/7 (on device). ✓
+- HTTPS hosting on GitHub Pages → Task 12. ✓
 - Error handling (no Web Audio / blocked storage / autoplay gesture) → settings fallback in Task 7; first-tap gesture in Task 9 (`play()` on click). ✓
 - Engine unit tests (range, filter, loop seam) → Task 2–6. ✓
 

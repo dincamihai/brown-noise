@@ -18,7 +18,10 @@ hiss. The app is an installable, offline-capable PWA.
 - **Playback model:** plays indefinitely until manually stopped. No timer, no fade.
 - **Customization:** play/pause, volume slider, and a tone/depth slider, with good
   defaults so it works well untouched.
-- **Distribution:** installable PWA, offline-capable.
+- **Distribution:** installable PWA, offline-capable. Hosted on GitHub Pages —
+  PWA install and service workers require HTTPS, and the nightly device is the
+  user's phone (Android), which cannot use the localhost exemption. All asset
+  paths are relative so subpath hosting (`user.github.io/repo/`) works.
 
 ## Key architectural decision: background playback
 
@@ -79,6 +82,9 @@ trivial and dependency-free. Four focused modules:
   lock-screen controls appear. Plays indefinitely. The first tap also satisfies the
   browser's audio-autoplay gesture requirement.
 - **Volume slider:** sets `audio.volume` directly — instant, no regeneration.
+  (Target device is Android, where `audio.volume` is settable. On iOS Safari it
+  is read-only; supporting iOS would require baking gain into the rendered
+  buffer — explicitly out of scope.)
 - **Tone/depth slider:** debounced (~150 ms after the user stops dragging) → engine
   regenerates the buffer at the new cutoff → player swaps the source and resumes at
   the same position and volume (smooth change, not a restart).
