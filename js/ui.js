@@ -31,7 +31,7 @@ function init() {
 
   playBtn.addEventListener('click', async () => {
     if (player.isPlaying) player.pause();
-    else await player.play();
+    else await player.play().catch(() => {});
     reflectUi();
   });
 
