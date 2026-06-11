@@ -1,12 +1,13 @@
 // js/ui.js — wires controls to the engine + player. Browser only.
 import { renderNoiseWav } from './noise.js';
 import { Player } from './player.js';
-import { loadSettings, saveSettings, sliderToCutoff, cutoffToSlider } from './settings.js';
+import { loadSettings, saveSettings, sliderToCutoff, cutoffToSlider, formatHz } from './settings.js';
 
 const audioEl = document.getElementById('audio');
 const playBtn = document.getElementById('play');
 const volumeSlider = document.getElementById('volume');
 const toneSlider = document.getElementById('tone');
+const freqEl = document.getElementById('freq');
 
 const player = new Player(audioEl);
 let settings = loadSettings();
@@ -22,12 +23,17 @@ function reflectUi() {
   playBtn.setAttribute('aria-label', playing ? 'Pause' : 'Play');
 }
 
+function reflectFreq() {
+  freqEl.textContent = formatHz(settings.cutoffHz);
+}
+
 function init() {
   volumeSlider.value = String(settings.volume);
   toneSlider.value = String(cutoffToSlider(settings.cutoffHz));
   player.setVolume(settings.volume);
   regenerate();
   reflectUi();
+  reflectFreq();
 
   playBtn.addEventListener('click', async () => {
     if (player.isPlaying) player.pause();
@@ -43,6 +49,7 @@ function init() {
 
   toneSlider.addEventListener('input', () => {
     settings.cutoffHz = sliderToCutoff(Number(toneSlider.value));
+    reflectFreq();
     saveSettings(settings);
     clearTimeout(toneDebounce);
     toneDebounce = setTimeout(regenerate, 150);

@@ -125,3 +125,12 @@ input[type="range"]::-moz-range-thumb {
   border: 0;
   border-radius: 0;
 }
+
+.freq {
+  position: fixed;
+  right: 0.75rem;
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  color: var(--amber-dim);
+}

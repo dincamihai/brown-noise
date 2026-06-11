@@ -58,3 +58,8 @@ export function saveSettings(settings) {
     /* ignore: storage blocked / private mode */
   }
 }
+
+// Format a cutoff for the corner readout, e.g. 447.2 -> "447 HZ".
+export function formatHz(hz) {
+  return `${Math.round(hz)} HZ`;
+}

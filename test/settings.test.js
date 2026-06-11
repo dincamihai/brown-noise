@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   sliderToCutoff, cutoffToSlider, clamp, normalizeSettings, loadSettings, saveSettings,
-  SETTINGS_DEFAULTS, CUTOFF_MIN, CUTOFF_MAX,
+  SETTINGS_DEFAULTS, CUTOFF_MIN, CUTOFF_MAX, formatHz,
 } from '../js/settings.js';
 
 test('sliderToCutoff maps endpoints to the cutoff range', () => {
@@ -74,4 +74,10 @@ test('loadSettings and saveSettings survive a throwing storage', () => {
   } finally {
     delete globalThis.localStorage;
   }
+});
+
+test('formatHz renders a rounded pixel-style readout', () => {
+  assert.equal(formatHz(447.21), '447 HZ');
+  assert.equal(formatHz(2000), '2000 HZ');
+  assert.equal(formatHz(99.6), '100 HZ');
 });
