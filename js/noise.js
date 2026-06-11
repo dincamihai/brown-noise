@@ -20,3 +20,17 @@ export function generateBrownNoise(numSamples) {
   }
   return out;
 }
+
+// One-pole low-pass filter. Lower cutoff => deeper/darker sound.
+export function lowPassFilter(samples, cutoffHz, sampleRate = DEFAULT_SAMPLE_RATE) {
+  const out = new Float32Array(samples.length);
+  const rc = 1 / (2 * Math.PI * cutoffHz);
+  const dt = 1 / sampleRate;
+  const alpha = dt / (rc + dt);
+  let y = 0;
+  for (let i = 0; i < samples.length; i++) {
+    y = y + alpha * (samples[i] - y);
+    out[i] = y;
+  }
+  return out;
+}

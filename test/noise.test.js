@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateBrownNoise } from '../js/noise.js';
+import { generateBrownNoise, lowPassFilter } from '../js/noise.js';
 
 test('generateBrownNoise returns correct length within [-1,1] and not all zero', () => {
   const s = generateBrownNoise(10000);
@@ -11,4 +11,23 @@ test('generateBrownNoise returns correct length within [-1,1] and not all zero',
     if (v !== 0) nonZero = true;
   }
   assert.ok(nonZero, 'expected some non-zero samples');
+});
+
+function meanAbsDiff(s) {
+  let sum = 0;
+  for (let i = 1; i < s.length; i++) sum += Math.abs(s[i] - s[i - 1]);
+  return sum / (s.length - 1);
+}
+
+test('lowPassFilter reduces high-frequency content', () => {
+  // Deterministic pseudo-white noise (no Math.random, for a stable assertion).
+  const white = new Float32Array(20000);
+  let seed = 1;
+  for (let i = 0; i < white.length; i++) {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    white[i] = seed / 0x3fffffff - 1;
+  }
+  const lp = lowPassFilter(white, 200, 44100);
+  assert.ok(meanAbsDiff(lp) < meanAbsDiff(white),
+    'low-passed signal should vary less between adjacent samples');
 });
