@@ -34,3 +34,35 @@ export function lowPassFilter(samples, cutoffHz, sampleRate = DEFAULT_SAMPLE_RAT
   }
   return out;
 }
+
+// Equal-power crossfade weights of length f.
+// fadeIn rises 0->1, fadeOut falls 1->0, with fadeIn^2 + fadeOut^2 === 1.
+export function equalPowerWeights(f) {
+  const fadeIn = new Float32Array(f);
+  const fadeOut = new Float32Array(f);
+  for (let i = 0; i < f; i++) {
+    const angle = ((i + 0.5) / f) * (Math.PI / 2); // 0 .. pi/2
+    fadeIn[i] = Math.sin(angle);
+    fadeOut[i] = Math.cos(angle);
+  }
+  return { fadeIn, fadeOut };
+}
+
+// Make `samples` seamlessly loopable by crossfading its tail into its head.
+// Returns a new Float32Array of length (samples.length - fadeSamples).
+export function equalPowerCrossfade(samples, fadeSamples) {
+  const L = samples.length;
+  const f = fadeSamples;
+  const outLen = L - f;
+  const out = new Float32Array(outLen);
+  const { fadeIn, fadeOut } = equalPowerWeights(f);
+  // Crossfade region: head (fading in) blended with the tail (fading out).
+  for (let i = 0; i < f; i++) {
+    out[i] = fadeIn[i] * samples[i] + fadeOut[i] * samples[outLen + i];
+  }
+  // Steady region: straight copy.
+  for (let i = f; i < outLen; i++) {
+    out[i] = samples[i];
+  }
+  return out;
+}
