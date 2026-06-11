@@ -2,6 +2,15 @@
 
 const DEFAULT_SAMPLE_RATE = 44100;
 
+export const DEFAULTS = {
+  sampleRate: 44100,
+  durationSec: 30,
+  fadeSec: 1,
+  cutoffHz: 500,
+  targetRms: 0.2,
+  peakCeiling: 0.99,
+};
+
 // Generate brown noise normalized to [-1, 1] (leaky-integrated white noise).
 export function generateBrownNoise(numSamples) {
   const out = new Float32Array(numSamples);
@@ -68,6 +77,41 @@ export function equalPowerCrossfade(samples, fadeSamples) {
     out[i] = samples[i];
   }
   return out;
+}
+
+// Scale to a consistent loudness (target RMS), capped so no sample exceeds
+// peakCeiling. Consistent loudness across regenerations/tone settings, and
+// guarantees encodeWav never hard-clips (e.g. in the crossfade region).
+export function normalizeLoudness(samples, targetRms = DEFAULTS.targetRms, peakCeiling = DEFAULTS.peakCeiling) {
+  let sumSq = 0;
+  let peak = 0;
+  for (const v of samples) {
+    sumSq += v * v;
+    const a = Math.abs(v);
+    if (a > peak) peak = a;
+  }
+  const rms = Math.sqrt(sumSq / samples.length);
+  const out = new Float32Array(samples.length);
+  if (rms === 0 || peak === 0) return out;
+  const gain = Math.min(targetRms / rms, peakCeiling / peak);
+  for (let i = 0; i < samples.length; i++) out[i] = samples[i] * gain;
+  return out;
+}
+
+// Full pipeline: generate -> low-pass -> seamless loop -> normalize -> WAV bytes.
+export function renderNoiseWav({
+  durationSec = DEFAULTS.durationSec,
+  fadeSec = DEFAULTS.fadeSec,
+  cutoffHz = DEFAULTS.cutoffHz,
+  sampleRate = DEFAULTS.sampleRate,
+} = {}) {
+  const totalSamples = Math.round(durationSec * sampleRate);
+  const fadeSamples = Math.round(fadeSec * sampleRate);
+  const raw = generateBrownNoise(totalSamples);
+  const filtered = lowPassFilter(raw, cutoffHz, sampleRate);
+  const looped = equalPowerCrossfade(filtered, fadeSamples);
+  const normalized = normalizeLoudness(looped);
+  return encodeWav(normalized, sampleRate);
 }
 
 // Encode mono Float32 samples in [-1,1] as 16-bit PCM WAV. Returns Uint8Array.
