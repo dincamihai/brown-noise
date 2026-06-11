@@ -65,3 +65,11 @@ test('equalPowerCrossfade reduces loop-boundary discontinuity', () => {
   const xfadeJump = Math.abs(out[0] - out[out.length - 1]);
   assert.ok(xfadeJump < naiveJump, `xfade ${xfadeJump} should be < naive ${naiveJump}`);
 });
+
+test('equalPowerCrossfade rejects invalid fadeSamples', () => {
+  const s = new Float32Array(100);
+  assert.throws(() => equalPowerCrossfade(s, 51), RangeError);   // > half the buffer
+  assert.throws(() => equalPowerCrossfade(s, -1), RangeError);
+  assert.throws(() => equalPowerCrossfade(s, 10.5), RangeError);
+  assert.equal(equalPowerCrossfade(s, 50).length, 50);           // exactly half is OK
+});

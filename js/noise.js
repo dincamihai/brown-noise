@@ -36,7 +36,7 @@ export function lowPassFilter(samples, cutoffHz, sampleRate = DEFAULT_SAMPLE_RAT
 }
 
 // Equal-power crossfade weights of length f.
-// fadeIn rises 0->1, fadeOut falls 1->0, with fadeIn^2 + fadeOut^2 === 1.
+// fadeIn rises ~0->~1, fadeOut falls ~1->~0, with fadeIn^2 + fadeOut^2 === 1.
 export function equalPowerWeights(f) {
   const fadeIn = new Float32Array(f);
   const fadeOut = new Float32Array(f);
@@ -51,6 +51,9 @@ export function equalPowerWeights(f) {
 // Make `samples` seamlessly loopable by crossfading its tail into its head.
 // Returns a new Float32Array of length (samples.length - fadeSamples).
 export function equalPowerCrossfade(samples, fadeSamples) {
+  if (!Number.isInteger(fadeSamples) || fadeSamples < 0 || fadeSamples > samples.length / 2) {
+    throw new RangeError(`fadeSamples must be an integer in [0, ${Math.floor(samples.length / 2)}], got ${fadeSamples}`);
+  }
   const L = samples.length;
   const f = fadeSamples;
   const outLen = L - f;
