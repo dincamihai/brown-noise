@@ -134,3 +134,27 @@ input[type="range"]::-moz-range-thumb {
   letter-spacing: 0.1em;
   color: var(--amber-dim);
 }
+
+.freq input {
+  width: 4ch;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px dotted var(--amber-dim);
+  color: var(--amber-dim);
+  font: inherit;
+  text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.freq input::-webkit-outer-spin-button,
+.freq input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.freq input:focus {
+  outline: none;
+  color: var(--amber);
+  border-bottom-color: var(--amber);
+}

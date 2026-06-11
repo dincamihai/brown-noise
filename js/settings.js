@@ -59,7 +59,11 @@ export function saveSettings(settings) {
   }
 }
 
-// Format a cutoff for the corner readout, e.g. 447.2 -> "447 HZ".
-export function formatHz(hz) {
-  return `${Math.round(hz)} HZ`;
+// Parse a typed frequency ("250") into a rounded, clamped cutoff. Null if not a number.
+export function parseHz(text) {
+  const t = String(text).trim();
+  if (t === '') return null;
+  const n = Number(t);
+  if (!Number.isFinite(n)) return null;
+  return clamp(Math.round(n), CUTOFF_MIN, CUTOFF_MAX);
 }

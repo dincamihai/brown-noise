@@ -1,7 +1,7 @@
 // js/ui.js — wires controls to the engine + player. Browser only.
 import { renderNoiseWav } from './noise.js';
 import { Player } from './player.js';
-import { loadSettings, saveSettings, sliderToCutoff, cutoffToSlider, formatHz } from './settings.js';
+import { loadSettings, saveSettings, sliderToCutoff, cutoffToSlider, parseHz } from './settings.js';
 
 const audioEl = document.getElementById('audio');
 const playBtn = document.getElementById('play');
@@ -24,7 +24,16 @@ function reflectUi() {
 }
 
 function reflectFreq() {
-  freqEl.textContent = formatHz(settings.cutoffHz);
+  freqEl.value = String(Math.round(settings.cutoffHz));
+}
+
+function applyCutoff(hz) {
+  settings.cutoffHz = hz;
+  toneSlider.value = String(cutoffToSlider(hz));
+  reflectFreq();
+  saveSettings(settings);
+  clearTimeout(toneDebounce);
+  toneDebounce = setTimeout(regenerate, 150);
 }
 
 function init() {
@@ -53,6 +62,16 @@ function init() {
     saveSettings(settings);
     clearTimeout(toneDebounce);
     toneDebounce = setTimeout(regenerate, 150);
+  });
+
+  freqEl.addEventListener('change', () => {
+    const hz = parseHz(freqEl.value);
+    if (hz === null) {
+      reflectFreq(); // restore the current value on invalid input
+      return;
+    }
+    applyCutoff(hz);
+    freqEl.blur(); // dismiss the phone keyboard
   });
 
   audioEl.addEventListener('play', reflectUi);
