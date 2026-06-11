@@ -28,6 +28,9 @@ test('lowPassFilter reduces high-frequency content', () => {
     white[i] = seed / 0x3fffffff - 1;
   }
   const lp = lowPassFilter(white, 200, 44100);
-  assert.ok(meanAbsDiff(lp) < meanAbsDiff(white),
-    'low-passed signal should vary less between adjacent samples');
+  assert.ok(meanAbsDiff(lp) < 0.1 * meanAbsDiff(white),
+    'low-passed signal should vary far less between adjacent samples');
+  let peak = 0;
+  for (const v of lp) peak = Math.max(peak, Math.abs(v));
+  assert.ok(peak > 0.05, 'filter should pass low frequencies, not just attenuate everything');
 });
