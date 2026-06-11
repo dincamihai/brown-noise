@@ -6,6 +6,8 @@ export class Player {
     this.audio.loop = true;
     this._url = null;
     this._setupMediaSession();
+    this.audio.addEventListener('play', () => this._syncPlaybackState());
+    this.audio.addEventListener('pause', () => this._syncPlaybackState());
   }
 
   // Swap the audio source to new WAV bytes, preserving position + play state.
@@ -34,16 +36,22 @@ export class Player {
 
   async play() {
     await this.audio.play();
-    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
   }
 
   pause() {
     this.audio.pause();
-    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
   }
 
   get isPlaying() {
     return !this.audio.paused;
+  }
+
+  // Keep the lock-screen state truthful even when Android pauses us
+  // externally (audio-focus loss: phone call, another app playing).
+  _syncPlaybackState() {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = this.audio.paused ? 'paused' : 'playing';
+    }
   }
 
   _setupMediaSession() {
@@ -51,8 +59,12 @@ export class Player {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: 'Brown Noise',
       artist: 'Sleep',
+      artwork: [
+        { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+        { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+      ],
     });
-    navigator.mediaSession.setActionHandler('play', () => this.play());
+    navigator.mediaSession.setActionHandler('play', () => this.play().catch(() => {}));
     navigator.mediaSession.setActionHandler('pause', () => this.pause());
   }
 }
