@@ -7,7 +7,7 @@ export const DEFAULTS = {
   durationSec: 30,
   fadeSec: 1,
   cutoffHz: 500,
-  targetRms: 0.2,
+  targetRms: 0.17, // 0.99/0.17 ≈ 5.8x crest headroom; measured worst-case crest ≈ 5.3
   peakCeiling: 0.99,
 };
 
@@ -82,6 +82,7 @@ export function equalPowerCrossfade(samples, fadeSamples) {
 // Scale to a consistent loudness (target RMS), capped so no sample exceeds
 // peakCeiling. Consistent loudness across regenerations/tone settings, and
 // guarantees encodeWav never hard-clips (e.g. in the crossfade region).
+// Note: RMS is energy-consistent, not perceptually (equal-loudness) consistent — accepted for this app.
 export function normalizeLoudness(samples, targetRms = DEFAULTS.targetRms, peakCeiling = DEFAULTS.peakCeiling) {
   let sumSq = 0;
   let peak = 0;

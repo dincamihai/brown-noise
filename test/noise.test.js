@@ -124,6 +124,29 @@ test('renderNoiseWav output never clips (no full-scale samples)', () => {
   }
 });
 
+test('normalizeLoudness peak ceiling binds on high-crest input', () => {
+  const s = new Float32Array(1000).fill(0.01);
+  s[500] = 1; // single spike: high crest factor
+  const out = normalizeLoudness(s, 0.2, 0.99);
+  let sumSq = 0, peak = 0;
+  for (const v of out) { sumSq += v * v; peak = Math.max(peak, Math.abs(v)); }
+  assert.ok(Math.abs(peak - 0.99) < 1e-3, `peak ${peak} should sit at the ceiling`);
+  assert.ok(Math.sqrt(sumSq / out.length) < 0.2, 'rms falls short of target when ceiling binds');
+});
+
+test('renderNoiseWav payload RMS matches the loudness target', () => {
+  const wav = renderNoiseWav({ durationSec: 2, fadeSec: 0.5, cutoffHz: 500, sampleRate: 8000 });
+  const view = new DataView(wav.buffer);
+  let sumSq = 0;
+  const n = (wav.length - 44) / 2;
+  for (let off = 44; off < wav.length; off += 2) {
+    const v = view.getInt16(off, true);
+    sumSq += v * v;
+  }
+  const rms = Math.sqrt(sumSq / n) / 32767;
+  assert.ok(Math.abs(rms - DEFAULTS.targetRms) < 0.01, `payload rms ${rms} should be ~${DEFAULTS.targetRms}`);
+});
+
 test('DEFAULTS expose the sleep-tuned values', () => {
   assert.equal(DEFAULTS.cutoffHz, 500);
   assert.equal(DEFAULTS.durationSec, 30);
