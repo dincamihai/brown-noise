@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateBrownNoise, lowPassFilter, equalPowerWeights, equalPowerCrossfade } from '../js/noise.js';
+import { generateBrownNoise, lowPassFilter, equalPowerWeights, equalPowerCrossfade, encodeWav } from '../js/noise.js';
 
 test('generateBrownNoise returns correct length within [-1,1] and not all zero', () => {
   const s = generateBrownNoise(10000);
@@ -72,4 +72,17 @@ test('equalPowerCrossfade rejects invalid fadeSamples', () => {
   assert.throws(() => equalPowerCrossfade(s, -1), RangeError);
   assert.throws(() => equalPowerCrossfade(s, 10.5), RangeError);
   assert.equal(equalPowerCrossfade(s, 50).length, 50);           // exactly half is OK
+});
+
+test('encodeWav writes a valid 16-bit PCM mono header', () => {
+  const s = new Float32Array([0, 0.5, -0.5, 1, -1]);
+  const wav = encodeWav(s, 44100);
+  assert.equal(wav.length, 44 + s.length * 2);
+  assert.equal(String.fromCharCode(...wav.slice(0, 4)), 'RIFF');
+  assert.equal(String.fromCharCode(...wav.slice(8, 12)), 'WAVE');
+  const view = new DataView(wav.buffer);
+  assert.equal(view.getUint16(20, true), 1);     // PCM format
+  assert.equal(view.getUint16(22, true), 1);     // mono
+  assert.equal(view.getUint32(24, true), 44100); // sample rate
+  assert.equal(view.getUint16(34, true), 16);    // bits per sample
 });
