@@ -480,7 +480,7 @@ export const DEFAULTS = {
   durationSec: 30,
   fadeSec: 1,
   cutoffHz: 500,
-  targetRms: 0.2,
+  targetRms: 0.17, // 0.99/0.17 ≈ 5.8x crest headroom; measured worst-case crest ≈ 5.3
   peakCeiling: 0.99,
 };
 
@@ -767,6 +767,8 @@ git commit -m "feat: add playback controller"
 - Create: `fonts/press-start-2p.woff2` (downloaded)
 
 Visual direction (user-requested): retro pixel / warm CRT amber nostalgia, kept dim for a dark bedroom. Pixel font is self-hosted for offline use. No border-radius anywhere; chunky square borders; subtle darkening scanlines.
+
+Accepted trade-off (from Task 6 review): `renderNoiseWav` blocks the main thread ~150–300 ms on a phone per call. It runs once at load and once per tone-slider settle (debounced) — a rare, set-once action — so we accept the brief hitch rather than adding a Web Worker. Volume changes never regenerate.
 
 - [ ] **Step 0: Download the pixel font (OFL-licensed Press Start 2P)**
 
