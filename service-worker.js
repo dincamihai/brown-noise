@@ -1,4 +1,4 @@
-const CACHE = 'brown-noise-v4';
+const CACHE = 'brown-noise-v5';
 const ASSETS = [
   './',
   './index.html',

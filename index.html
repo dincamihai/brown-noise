@@ -24,11 +24,14 @@
       </label>
     </div>
   </main>
-  <label class="freq">
-    <input id="freq" type="number" inputmode="numeric" min="100" max="2000" step="1"
-           aria-label="Cutoff frequency in hertz" />
-    <span>HZ</span>
-  </label>
+  <div class="freq">
+    <button id="freq-d10" class="freq-step" type="button" aria-label="Decrease frequency 10 hertz">-10</button>
+    <button id="freq-d1" class="freq-step" type="button" aria-label="Decrease frequency 1 hertz">-1</button>
+    <span class="freq-readout"><span id="freq" role="status" aria-live="polite"
+          aria-label="Cutoff frequency in hertz">500</span> HZ</span>
+    <button id="freq-u1" class="freq-step" type="button" aria-label="Increase frequency 1 hertz">+1</button>
+    <button id="freq-u10" class="freq-step" type="button" aria-label="Increase frequency 10 hertz">+10</button>
+  </div>
   <audio id="audio" loop></audio>
   <script type="module" src="js/ui.js"></script>
   <script>

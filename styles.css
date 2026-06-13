@@ -128,33 +128,42 @@ input[type="range"]::-moz-range-thumb {
 
 .freq {
   position: fixed;
-  right: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
   bottom: max(0.75rem, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 0.55rem;
   letter-spacing: 0.1em;
   color: var(--amber-dim);
 }
 
-.freq input {
-  width: 4ch;
-  background: transparent;
-  border: 0;
-  border-bottom: 2px dotted var(--amber-dim);
-  color: var(--amber-dim);
-  font: inherit;
-  text-align: right;
-  -moz-appearance: textfield;
-  appearance: textfield;
+/* The Hz readout: amber number + dim unit, fixed width so steppers don't shift. */
+.freq-readout {
+  min-width: 6ch;
+  text-align: center;
+  white-space: nowrap;
 }
 
-.freq input::-webkit-outer-spin-button,
-.freq input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.freq input:focus {
-  outline: none;
+.freq-readout #freq {
   color: var(--amber);
-  border-bottom-color: var(--amber);
 }
+
+/* Stepper buttons — generous touch targets, no keyboard needed. */
+.freq-step {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.4rem;
+  border: 2px solid var(--amber-dim);
+  border-radius: 0;
+  background: var(--bezel);
+  color: var(--amber);
+  font: inherit;
+  font-size: 0.55rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  touch-action: manipulation; /* no double-tap-zoom delay on the buttons */
+}
+
+.freq-step:active { transform: translate(1px, 1px); }

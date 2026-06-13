@@ -1,7 +1,7 @@
 // js/ui.js — wires controls to the engine + player. Browser only.
 import { renderNoiseWav } from './noise.js';
 import { Player } from './player.js';
-import { loadSettings, saveSettings, sliderToCutoff, cutoffToSlider, parseHz } from './settings.js';
+import { loadSettings, saveSettings, sliderToCutoff, cutoffToSlider, clamp, CUTOFF_MIN, CUTOFF_MAX } from './settings.js';
 
 const audioEl = document.getElementById('audio');
 const playBtn = document.getElementById('play');
@@ -24,7 +24,7 @@ function reflectUi() {
 }
 
 function reflectFreq() {
-  freqEl.value = String(Math.round(settings.cutoffHz));
+  freqEl.textContent = String(Math.round(settings.cutoffHz));
 }
 
 function applyCutoff(hz) {
@@ -34,6 +34,12 @@ function applyCutoff(hz) {
   saveSettings(settings);
   clearTimeout(toneDebounce);
   toneDebounce = setTimeout(regenerate, 150);
+}
+
+// Nudge the cutoff by a whole number of Hz, clamped to the valid range. Steppers
+// give exact control with no keyboard (which on phones covers the bottom readout).
+function stepFreq(deltaHz) {
+  applyCutoff(clamp(Math.round(settings.cutoffHz) + deltaHz, CUTOFF_MIN, CUTOFF_MAX));
 }
 
 function init() {
@@ -57,26 +63,25 @@ function init() {
   });
 
   toneSlider.addEventListener('input', () => {
-    settings.cutoffHz = sliderToCutoff(Number(toneSlider.value));
+    // Commit a whole number of Hz so the stored/audible cutoff always matches the
+    // integer readout the user is watching (no sub-Hz float drift).
+    settings.cutoffHz = clamp(Math.round(sliderToCutoff(Number(toneSlider.value))), CUTOFF_MIN, CUTOFF_MAX);
     reflectFreq();
     saveSettings(settings);
     clearTimeout(toneDebounce);
     toneDebounce = setTimeout(regenerate, 150);
   });
 
-  freqEl.addEventListener('change', () => {
-    const hz = parseHz(freqEl.value);
-    if (hz === null) {
-      reflectFreq(); // restore the current value on invalid input
-      return;
-    }
-    applyCutoff(hz);
-    freqEl.blur(); // dismiss the phone keyboard
+  toneSlider.addEventListener('change', () => {
+    // On release, snap the thumb to the exact position of the committed integer Hz
+    // so the final touch sample can't leave it a few Hz off from the readout.
+    toneSlider.value = String(cutoffToSlider(settings.cutoffHz));
   });
 
-  freqEl.addEventListener('focus', () => {
-    freqEl.select(); // select the current value so typing replaces it
-  });
+  document.getElementById('freq-d10').addEventListener('click', () => stepFreq(-10));
+  document.getElementById('freq-d1').addEventListener('click', () => stepFreq(-1));
+  document.getElementById('freq-u1').addEventListener('click', () => stepFreq(1));
+  document.getElementById('freq-u10').addEventListener('click', () => stepFreq(10));
 
   audioEl.addEventListener('play', reflectUi);
   audioEl.addEventListener('pause', reflectUi);
