@@ -74,6 +74,10 @@ function init() {
     freqEl.blur(); // dismiss the phone keyboard
   });
 
+  freqEl.addEventListener('focus', () => {
+    freqEl.select(); // select the current value so typing replaces it
+  });
+
   audioEl.addEventListener('play', reflectUi);
   audioEl.addEventListener('pause', reflectUi);
 }
